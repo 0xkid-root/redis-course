@@ -11,7 +11,7 @@ mongoose.connect('mongodb://localhost:27017/redistest')
 .catch(console.error)
 
 app.use(express.json());
-// app.use("/api/users", userRoutes);
+app.use("/api/users", userRoutes);
 
 
 

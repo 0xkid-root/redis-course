@@ -32,6 +32,12 @@ const createUser = async (req,res)=>{
         const {email,name} = req.body;
         const newUser = new User({email,name});
         await newUser.save();
+        //cache the new user
+
+        redisClient.set(`user:${newUser._id}`,JSON.stringify(newUser),{Ex:3600});
+        redisClient.del("users:all");// yaha par humne old wale cache ko deelte kiya kyu ke getAll method me fir se fetch kare database se
+
+
         return res.status(201).json({message:"User created successfully"})
 
     }catch(error){
@@ -42,10 +48,19 @@ const createUser = async (req,res)=>{
 const getAUser = async (req,res)=>{
     try{
         const userId = req.params.id;
+        const cachedUser = await redisClient.get(`user:${userId}`);
+
+        if (cachedUser){
+            console.log("from redis");
+            return res.status(200).json({ user: JSON.parse(cachedUser) }); // parse here
+        }
+
         const user = await User.findById(userId);
         if(!user){
             return res.status(404).json({message:"User not found"});
         }
+        redisClient.set(`user:${userId}`, JSON.stringify(user), { Ex: 3600 });
+
         return res.status(200).json({user:user});
 
     }catch(error){
@@ -67,6 +82,11 @@ const updateAUser = async(req,res)=>{
         if(!updateUser){
             return res.status(404).json({message:"User not found"});
         }
+
+        redisClient.del("users:all"); // yaha par humne old wale cache ko deelte kiya kyu ke getAll method me fir se fetch kare database se
+
+        redisClient.set(`user:${updateUser._id}`, JSON.stringify(updateUser), { Ex: 3600 });
+        console.log("from mongodb");
         return res.status(200).json({user:updateUser});
 
         
@@ -84,6 +104,9 @@ const deleteAUser = async(req,res)=>{
         if(!user){
             return res.status(404).json({message:"User not found"});
         }
+        redisClient.del("users:all");
+        redisClient.del(`user:${req.params.id}`);
+
         return res.status(200).json({message:"User deleted successfully"});
     }catch(error){
         return res.status(500).json({error:error.message})

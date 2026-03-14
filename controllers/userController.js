@@ -1,5 +1,6 @@
 
 const { User } = require("../modles/user");
+const redisClient = require("../redis/redisClient");
 
 const getAll =async ()=>{
     try{
